@@ -1,6 +1,6 @@
 --- #YAML:1.0
 name:               Net-FileMaker
-version:            0.01
+version:            0.02
 abstract:           Interact with FileMaker Server
 author:
     - Squeeks <squeek@cpan.org>
@@ -9,12 +9,14 @@ distribution_type:  module
 configure_requires:
     ExtUtils::MakeMaker:  0
 build_requires:
-    LWP:          0
-    XML::Simple:  2.18
+    ExtUtils::MakeMaker:  0
 requires:
-    Test::More:  0
+    LWP:          0
+    perl:         5.008
+    Test::More:   0
+    XML::Simple:  2.18
 resources:
-    repository:  http://github/squeeks/Net-FileMaker
+    repository:  http://github.com/squeeks/Net-FileMaker
 no_index:
     directory:
         - t
