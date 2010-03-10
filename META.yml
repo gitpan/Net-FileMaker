@@ -1,6 +1,6 @@
 --- #YAML:1.0
 name:               Net-FileMaker
-version:            0.05
+version:            0.0501
 abstract:           Interact with FileMaker services
 author:
     - Squeeks <squeek@cpan.org>
