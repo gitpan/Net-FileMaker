@@ -15,7 +15,7 @@ Version 0.05
 
 =cut
 
-our $VERSION = 0.05;
+our $VERSION = '0.05_02';
 
 =head1 SYNOPSIS
 
@@ -48,7 +48,7 @@ sub new
 	my($class, %args) = @_;
 
 	# If the protocol isn't specified, let's assume it's just HTTP.
-	if($args{host} !=~/^http/)
+	if($args{host} !~/^http/)
 	{
 		$args{host} = 'http://'.$args{host};
 	}
@@ -57,7 +57,8 @@ sub new
 		host	  => $args{host},
 		ua 	  => LWP::UserAgent->new,
 		xml	  => XML::Twig->new,
-		resultset => '/fmi/xml/fmresultset.xml?', # Entirely for dbnames();
+		uri	  => URI->new($args{host}),
+		resultset => '/fmi/xml/fmresultset.xml', # Entirely for dbnames();
 	};
 
 	return bless $self;
@@ -110,29 +111,46 @@ sub dbnames
 
 }
 
+=head1 SEE ALSO
 
+L<Net::FileMaker::XML::Database>
 
-# _request(query => $query, resultset => $resultset, user => $user, pass => $pass)
+=cut
+
+# _request(query => $query, params => $params, resultset => $resultset, user => $user, pass => $pass)
 #
 # Performs a request to the FileMaker Server. The query and resultset keys are mandatory, 
 # however user and pass keys are not. The query should always be URI encoded.
 sub _request
 {
-	my ($self, %args) = @_;
+        my ($self, %args) = @_;
 
-	# Everything in %args should be uri encoded.
-	my $url = $self->{host}.$args{resultset}.$args{query};
-
-	my $req = HTTP::Request->new(GET => $url);
-
-	if($args{user} && $args{pass})
+        # Construct the URI
+        my $uri = $self->{uri}->clone;
+        $uri->path($args{resultset});
+        
+        my $url;
+	# This kind of defeats the purpose of using URI to begin with,
+        if($args{params})
 	{
-		$req->authorization_basic( $args{user}, $args{pass});
-	}
+                $uri->query_form(%{$args{params}});
+                $url = $uri->as_string."&".$args{query};
+        }
+        else
+        {
+           $url = $uri->as_string."?".$args{query};
+        }
 
-	my $res = $self->{ua}->request($req);
+        my $req = HTTP::Request->new(GET => $url);
 
-	return $res;
+        if($args{user} && $args{pass})
+        {       
+                $req->authorization_basic( $args{user}, $args{pass});
+        }       
+
+        my $res = $self->{ua}->request($req);
+
+        return $res;
 
 }
 
@@ -199,10 +217,29 @@ sub _compose_arrayref
 
 }
 
-=head1 SEE ALSO
 
-L<Net::FileMaker::XML::Database>
+# _assert_param()
+#
+# Optional parameters sometimes validation to ensure they are correct.
+# Warnings are issued if a parameter name is somehow invalid.
+sub _assert_param
+{
+	my($self, $unclean_param, $acceptable_params) = @_;
+	my $param;
 
-=cut
+	if($unclean_param =~/$acceptable_params/)
+	{
+		$param = $unclean_param;
+	}
+	else
+	{
+		# TODO: Localise this error message
+		warn "Invalid parameter specified - $unclean_param";
+	}
+
+
+	return $param;
+}
+
 
 1; # End of Net::FileMaker::XML;
