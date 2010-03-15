@@ -22,6 +22,14 @@ Net::FileMaker::XML::Database
 
 =cut
 
+=head1 VERSION
+
+Version 0.061
+
+=cut
+
+our $VERSION = 0.061;
+
 =head1 SYNOPSIS
 
 This module handles all the tasks with XML data. Don't call this module directly, instead use L<Net::FileMaker::XML>.
