@@ -6,7 +6,7 @@ use warnings;
 use 5.008;
 
 use LWP::UserAgent;
-use URI::Escape;
+use URI;
 
 =head1 NAME
 
@@ -14,11 +14,11 @@ Net::FileMaker - Interact with FileMaker services
 
 =head1 VERSION
 
-Version 0.05
+Version 0.06
 
 =cut
 
-our $VERSION = '0.05_02';
+our $VERSION = 0.06;
 
 =head1 SYNOPSIS
 
@@ -72,6 +72,7 @@ Squeeks, C<< <squeek at cpan.org> >>
 =head1 CONTRIBUTORS
 
 Simon Cozens, C<<simon at cpan.org>>
+Marcel Grünauer, C<<marcel at cpan.org>>
 
 =head1 BUGS
 

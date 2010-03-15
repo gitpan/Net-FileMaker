@@ -3,6 +3,8 @@ package Net::FileMaker::XML;
 use strict;
 use warnings;
 
+use Net::FileMaker::Error;
+
 use XML::Twig;
 
 =head1 NAME
@@ -11,11 +13,11 @@ Net::FileMaker::XML - Interact with FileMaker Server's XML Interface.
 
 =head1 VERSION
 
-Version 0.05
+Version 0.06
 
 =cut
 
-our $VERSION = '0.05_02';
+our $VERSION = 0.06;
 
 =head1 SYNOPSIS
 
@@ -29,10 +31,13 @@ key in the constructor as "xml":
     my $fms = Net::FileMaker->new(host => $host, type => 'xml');
 
 It's also possible to call this module directly:
-    
+
+    use Net::FileMaker::XML;
+
     my $fms = Net::FileMaker::XML->new(host => $host);
+
     my $dbnames = $fms->dbnames;
-    my $fmdb = $fms->database();
+    my $fmdb = $fms->database(db => $db, user => $user, pass => $pass);
 
 
 =head1 METHODS
@@ -61,6 +66,11 @@ sub new
 		resultset => '/fmi/xml/fmresultset.xml', # Entirely for dbnames();
 	};
 
+	if($args{error})
+	{
+		$self->{error} = Net::FileMaker::Error->new(lang => $args{error}, type => 'XML');
+	}
+
 	return bless $self;
 
 }
@@ -77,39 +87,37 @@ sub database
 
 	require Net::FileMaker::XML::Database;
 	return  Net::FileMaker::XML::Database->new(
-			host => $self->{host},
-			db   => $args{db},
-			user => $args{user} || '',
-			pass => $args{pass} || ''
+			host  => $self->{host},
+			db    => $args{db},
+			user  => $args{user} || '',
+			pass  => $args{pass} || ''
 		);
 }
 
 
 =head2 dbnames
 
-Lists all XML/XSLT enabled databases for a given host. This method requires no authentication.
+Returns an arrayref containing all XML/XSLT enabled databases for a given host. This method requires no authentication.
 
 =cut
 
 sub dbnames
 {
 	my $self = shift;
-	my $res  = $self->_request(
+	my $xml  = $self->_request(
 			resultset => $self->{resultset}, 
 			query	  =>'-dbnames'
 	);
 
-	if($res->is_success)
-	{
-		my $xml = $self->{xml}->parse($res->content);
-		return $self->_compose_arrayref('DATABASE_NAME', $xml->simplify);
-	}
-	else
-	{
-		return undef;
-	}
+	return $self->_compose_arrayref('DATABASE_NAME', $xml);
 
 }
+
+=head1 COMPATIBILITY
+
+This distrobution is tested against FileMaker Advanced Server 10.0.1.59 and shortly testing will commence against version 11. 
+Older versions are not tested at present, but feedback is welcome. See the messages present in the test suite on how to setup 
+tests against your server.
 
 =head1 SEE ALSO
 
@@ -130,7 +138,8 @@ sub _request
         $uri->path($args{resultset});
         
         my $url;
-	# This kind of defeats the purpose of using URI to begin with,
+	# This kind of defeats the purpose of using URI to begin with, but this fault has been reported
+	# on rt.cpan.org for over 2 years and many releases with no fix.
         if($args{params})
 	{
                 $uri->query_form(%{$args{params}});
@@ -150,42 +159,16 @@ sub _request
 
         my $res = $self->{ua}->request($req);
 
-        return $res;
+	my $xml = $self->{xml}->parse($res->content);
+	my $xml_data = $xml->simplify;
 
-}
-
-# _request_xml(query => $query, resultset => $resultset, user => $user, pass => $pass)
-#
-# Performs the same as _request, except will load and parse the XML itself. Returns a
-# hashref containing the parsed XML on success.
-sub _request_xml
-{
-	my($self, %args) = @_;
-
-	my $url = $self->{host}.$self->{resultset}.$args{query};
-
-	my $req = HTTP::Request->new(GET => $url);
-
-	if($args{user} && $args{pass})
+	# Inject localised error message
+	if($self->{error})
 	{
-		$req->authorization_basic( $args{user}, $args{pass});
+		$xml_data->{error}->{message} = $self->{error}->get_string($xml_data->{error}->{code});
 	}
 
-	my $res = $self->{ua}->request($req);
-
-	if($res->is_success)
-	{
-		my $xml = XMLin($res->content);
-		#TODO: Error Handling.
-		return $xml;
-	}
-	else
-	{
-		# Shouldn't really return undef, rather...
-		# TODO: Incorporate the HTTP error codes into the response so
-		# N::F::Error::HTTP can deal with it.
-		return undef;
-	}
+        return $xml_data;
 
 }
 
