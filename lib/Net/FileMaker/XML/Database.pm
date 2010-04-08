@@ -20,15 +20,13 @@ my $acceptable_params = {
 
 Net::FileMaker::XML::Database
 
-=cut
-
 =head1 VERSION
 
-Version 0.061
+Version 0.062
 
 =cut
 
-our $VERSION = 0.061;
+our $VERSION = 0.062;
 
 =head1 SYNOPSIS
 
@@ -232,6 +230,8 @@ sub total_rows
 
 	# Just do a findall with 1 record and parse the result. This might break on an empty database.
 	my $xml = $self->_request(
+		user      => $self->{user},
+		pass      => $self->{pass},
 		resultset => $self->{resultset},
 		params    => {'-db' => $self->{db}, '-lay' => $args{layout}, '-max' => '1' },
 		query 	  => '-findall'

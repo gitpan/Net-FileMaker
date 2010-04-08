@@ -13,11 +13,11 @@ Net::FileMaker::XML - Interact with FileMaker Server's XML Interface.
 
 =head1 VERSION
 
-Version 0.06
+Version 0.062
 
 =cut
 
-our $VERSION = 0.061;
+our $VERSION = 0.062;
 
 =head1 SYNOPSIS
 
@@ -115,7 +115,7 @@ sub dbnames
 
 =head1 COMPATIBILITY
 
-This distrobution is tested against FileMaker Advanced Server 10.0.1.59 and shortly testing will commence against version 11. 
+This distrobution is actively tested against FileMaker Advanced Server 10.0.1.59 and 11.0.1.95. 
 Older versions are not tested at present, but feedback is welcome. See the messages present in the test suite on how to setup 
 tests against your server.
 
@@ -184,7 +184,7 @@ sub _compose_arrayref
 
 	if(ref($xml->{resultset}->{record}) eq 'HASH')
 	{
-		return $xml->{resultset}->{record}->{field}->{data};
+		return $xml->{resultset}->{record}->{field}->{$fieldname}->{data};
 	}
 	elsif(ref($xml->{resultset}->{record}) eq 'ARRAY')
 	{
