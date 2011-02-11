@@ -2,31 +2,30 @@ package Net::FileMaker::XML::Database;
 
 use strict;
 use warnings;
+use Net::FileMaker::XML::ResultSet;
+use Carp;
 
-our @ISA = qw(Net::FileMaker::XML);
-
+use base qw(Net::FileMaker::XML);
 #
 # Particular methods have specific parameters that are optional, but need to be validated to mitigate sending
 # bad parameters to the server.
 my $acceptable_params = {
+    'find'    => '-recid|-lop|-op|-max|-skip|-sortorder|-sortfield|-script|-script\.prefind|-script\.presort',	
 	'findall' => '-recid|-lop|-op|-max|-skip|-sortorder|-sortfield|-script|-script\.prefind|-script\.presort',
 	'findany' => '-recid|-lop|-op|-max|-skip|-sortorder|-sortfield|-script|-script\.prefind|-script\.presort',
-	'delete'  => 'db|lay|recid|script',
-	'dup'     => 'db|lay|recid|script',
-	'edit'    => 'db|lay|recid|modid|script',
+	'delete'  => '-db|-lay|-recid|-script',
+	'dup'     => '-db|-lay|-recid|-script',
+	'edit'    => '-db|-lay|-recid|-modid|-script',
+	'new'     => '-db|-lay|-script'
 };
 
 =head1 NAME
 
 Net::FileMaker::XML::Database
 
-=head1 VERSION
-
-Version 0.062
-
 =cut
 
-our $VERSION = 0.062;
+our $VERSION = 0.063;
 
 =head1 SYNOPSIS
 
@@ -57,10 +56,11 @@ sub new
 		resultset => '/fmi/xml/fmresultset.xml',
                 ua        => LWP::UserAgent->new,
                 xml       => XML::Twig->new,
-		uri	  => URI->new($args{host}),	
+        uri => URI->new($args{host}),
 	};
 
-	return bless $self;
+    bless $self , $class;
+	return $self;
 }
 
 =head2 layoutnames
@@ -107,7 +107,7 @@ sub scriptnames
 
 =head2 find(layout => $layout, params => { parameters })
 
-Returns a hashref of rows on a specific database and layout.
+Returns a L<Net::FileMaker::XML::ResultSet> for a specific database and layout.
 
 =cut
 
@@ -115,26 +115,30 @@ sub find
 {
 	my ($self, %args) = @_;
 
-	$args{params}->{'-lay'} = $args{layout};
-	$args{params}->{'-db'}  = $self->{db};
+    my $params = { 
+        '-lay' => $args{layout},
+        '-db'  => $self->{db}
+    };
+
+    $params = $self->_assert_params(def_params => $params ,params => $args{params} , acceptable_params => $acceptable_params , type => 'find');
 	
 	my $xml = $self->_request(
 			resultset => $self->{resultset}, 
-			user 	  => $self->{user}, 
-			pass 	  => $self->{pass}, 
-			query	  => '-find',
-			params    => $args{params}
+			user      => $self->{user}, 
+			pass      => $self->{pass}, 
+			query     => '-find',
+			params    => $params
 	);
 
-	return $xml;
+	return Net::FileMaker::XML::ResultSet->new(rs => $xml , db => $self);
 }
 
 
 =head2 findall(layout => $layout, params => { parameters }, nocheck => 1)
 
-Returns all rows on a specific database and layout.
+Returns a L<Net::FileMaker::XML::ResultSet> of all rows on a specific database and layout.
 
-nocheck is an optional argument that will skip checking of parameters if set to 1.
+C<nocheck> is an optional argument that will skip checking of parameters if set to 1.
 
 =cut
 
@@ -147,38 +151,24 @@ sub findall
 		'-db'  => $self->{db}
 	};
 
-	if($args{params} && ref($args{params}) eq 'HASH')
-	{
-		for my $param(keys %{$args{params}})
-		{
-			# Perform or skip parameter checking
-			if($args{nocheck} && $args{nocheck} == 1)
-			{
-				$params->{$param} = $args{params}->{$param};
-			}
-			else
-			{
-				$params->{$param} = $args{params}->{$param} if $self->_assert_param($param, $acceptable_params->{findall});
-			}
-		}
-	}
+    $params = $self->_assert_params(def_params => $params ,params => $args{params} , acceptable_params => $acceptable_params, type => 'findall');
 
 	my $xml = $self->_request(
 			resultset => $self->{resultset}, 
-			user 	  => $self->{user}, 
-			pass 	  => $self->{pass}, 
-			query	  => '-findall',
+			user      => $self->{user}, 
+			pass      => $self->{pass}, 
+			query     => '-findall',
 			params    => $params
 	);
 
-	return $xml;
+    return Net::FileMaker::XML::ResultSet->new(rs => $xml , db => $self);
 }
 
 =head2 findany(layout => $layout, params => { parameters }, nocheck => 1)
 
-Returns a hashref of random rows on a specific database and layout.
+Returns a L<Net::FileMaker::XML::ResultSet> of random rows on a specific database and layout.
 
-nocheck is an optional argument that will skip checking of parameters if set to 1.
+C<nocheck> is an optional argument that will skip checking of parameters if set to 1.
 
 =cut
 
@@ -191,32 +181,121 @@ sub findany
 		'-db'  => $self->{db}
 	};
 
-	if($args{params} && ref($args{params}) eq 'HASH')
-	{
-		for my $param(keys %{$args{params}})
-		{
-			# Perform or skip parameter checking
-			if($args{nocheck} && $args{nocheck} == 1)
-			{
-				$params->{$param} = $args{params}->{$param};
-			}
-			else
-			{
-				$params->{$param} = $args{params}->{$param} if $self->_assert_param($param, $acceptable_params->{findall});
-			}
-		}
-	}
+    $params = $self->_assert_params(def_params => $params ,params => $args{params} , acceptable_params => $acceptable_params, type => 'findany');
 
 	my $xml = $self->_request(
 			resultset => $self->{resultset}, 
-			user 	  => $self->{user}, 
-			pass 	  => $self->{pass}, 
-			query	  => '-findany',
+			user      => $self->{user}, 
+			pass      => $self->{pass}, 
+			query     => '-findany',
 			params    => $params
 	);
 
-	return $xml;
+    return Net::FileMaker::XML::ResultSet->new(rs => $xml , db => $self);
 }
+
+
+
+=head2 edit(layout => $layout , recid => $recid , params => { params })
+
+Updates the row with the fieldname/value pairs passed to params.
+Returns a L<Net::FileMaker::XML::ResultSet> object.
+
+=cut
+
+#todo: add tests to /t/01_xml
+
+sub edit
+{
+    my ($self, %args) = @_;
+
+    my $params = { 
+        '-lay' => $args{layout},
+        '-db'  => $self->{db}
+    };
+    
+    # just to make the recid param more visible than putting it into the params
+    croak 'recid must be defined' if(! defined $args{recid});
+    $params->{'-recid'}  = $args{recid};
+    
+    $params = $self->_assert_params(def_params => $params ,params => $args{params} , acceptable_params => $acceptable_params, type => 'edit');
+    
+    my $xml = $self->_request(
+            resultset => $self->{resultset}, 
+            user      => $self->{user}, 
+            pass      => $self->{pass}, 
+            query     => '-edit',
+            params    => $params
+    );
+
+    return Net::FileMaker::XML::ResultSet->new(rs => $xml , db => $self);
+}
+
+=head2 remove(layout => $layout , recid => $recid , params => { params })
+
+Deletes the record with that specific record id and returns a L<Net::FileMaker::XML::ResultSet> object.
+
+=cut
+
+sub remove
+{
+    my ($self, %args) = @_;
+
+    my $params = { 
+        '-lay' => $args{layout},
+        '-db'  => $self->{db}
+    };
+    
+    # just to make the recid param more visible than putting it into the params
+    croak 'recid must be defined' if(! defined $args{recid});
+    $params->{'-recid'}  = $args{recid};
+    
+    $params = $self->_assert_params(def_params => $params ,params => $args{params} , acceptable_params => $acceptable_params, type => 'delete');    
+    
+    my $xml = $self->_request(
+            resultset => $self->{resultset}, 
+            user      => $self->{user}, 
+            pass      => $self->{pass}, 
+            query     => '-delete',
+            params    => $params
+    );
+
+    return Net::FileMaker::XML::ResultSet->new(rs => $xml , db => $self);
+}
+
+
+
+=head2 insert(layout => $layout , recid => $recid , params => { params })
+
+Creates a new record and populates that record with the fieldname/value pairs passed to params.
+
+Returns an L<Net::FileMaker::XML::ResultSet> object.
+
+=cut
+
+sub insert
+{
+    my ($self, %args) = @_;
+
+    my $params = { 
+        '-lay' => $args{layout},
+        '-db'  => $self->{db}
+    };
+    
+    $params = $self->_assert_params(def_params => $params ,params => $args{params} , acceptable_params => $acceptable_params , type => 'new');
+    
+    my $xml = $self->_request(
+            resultset => $self->{resultset}, 
+            user      => $self->{user}, 
+            pass      => $self->{pass}, 
+            query     => '-new',
+            params    => $params
+    );
+
+    return Net::FileMaker::XML::ResultSet->new(rs => $xml , db => $self);
+}
+
+
 
 =head2 total_rows(layout => $layout)
 
@@ -234,7 +313,7 @@ sub total_rows
 		pass      => $self->{pass},
 		resultset => $self->{resultset},
 		params    => {'-db' => $self->{db}, '-lay' => $args{layout}, '-max' => '1' },
-		query 	  => '-findall'
+		query     => '-findall'
 	);
 
 	return $xml;

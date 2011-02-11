@@ -2,7 +2,7 @@ package Net::FileMaker::XML;
 
 use strict;
 use warnings;
-
+use Carp;
 use Net::FileMaker::Error;
 
 use XML::Twig;
@@ -53,16 +53,16 @@ sub new
 	my($class, %args) = @_;
 
 	# If the protocol isn't specified, let's assume it's just HTTP.
-	if($args{host} !~/^http/)
+	if($args{host} !~/^http/x)
 	{
 		$args{host} = 'http://'.$args{host};
 	}
-
+    require LWP::UserAgent;
 	my $self = {
-		host	  => $args{host},
-		ua 	  => LWP::UserAgent->new,
-		xml	  => XML::Twig->new,
-		uri	  => URI->new($args{host}),
+		host  => $args{host},
+		ua    => LWP::UserAgent->new,
+		xml   => XML::Twig->new,
+		uri   => URI->new($args{host}),
 		resultset => '/fmi/xml/fmresultset.xml', # Entirely for dbnames();
 	};
 
@@ -71,7 +71,8 @@ sub new
 		$self->{error} = Net::FileMaker::Error->new(lang => $args{error}, type => 'XML');
 	}
 
-	return bless $self;
+    bless $self , $class;
+	return $self;
 
 }
 
@@ -106,7 +107,7 @@ sub dbnames
 	my $self = shift;
 	my $xml  = $self->_request(
 			resultset => $self->{resultset}, 
-			query	  =>'-dbnames'
+			query     =>'-dbnames'
 	);
 
 	return $self->_compose_arrayref('DATABASE_NAME', $xml);
@@ -168,7 +169,8 @@ sub _request
 		$xml_data->{error}->{message} = $self->{error}->get_string($xml_data->{error}->{code});
 	}
 
-        return $xml_data;
+    $xml_data->{http_response} = $res;
+    return $xml_data;
 
 }
 
@@ -180,8 +182,6 @@ sub _compose_arrayref
 {
 	my ($self, $fieldname, $xml) = @_;
 	
-	my @output;
-
 	if(ref($xml->{resultset}->{record}) eq 'HASH')
 	{
 		return $xml->{resultset}->{record}->{field}->{$fieldname}->{data};
@@ -205,24 +205,61 @@ sub _compose_arrayref
 #
 # Optional parameters sometimes validation to ensure they are correct.
 # Warnings are issued if a parameter name is somehow invalid.
+# single param check
+
 sub _assert_param
 {
 	my($self, $unclean_param, $acceptable_params) = @_;
 	my $param;
-
-	if($unclean_param =~/$acceptable_params/)
-	{
-		$param = $unclean_param;
-	}
-	else
-	{
-		# TODO: Localise this error message
-		warn "Invalid parameter specified - $unclean_param";
-	}
-
+	# if the param is of private type '-something' let's check, otherwise skip 'cause it could be the name of a field
+	# todo: we might add a strict control to avoid passing others params than the ones with "-" like in findall etc
+    if($unclean_param =~ /^-.+$/x)
+	    {
+		if($unclean_param =~/$acceptable_params/x)
+		{
+			$param = $unclean_param;
+		}
+		else
+		{
+			# TODO: Localise this error message
+			carp "Invalid parameter specified - $unclean_param";
+		}
+    }else{
+    	$param = $unclean_param;
+    }
 
 	return $param;
 }
 
+
+# _assert_params
+# Optional parameters sometimes validation to ensure they are correct.
+# Warnings are issued if a parameter name is somehow invalid.
+
+sub _assert_params
+{
+	my ($self , %args) = @_;
+	
+	my $params = $args{def_params};
+	my $acceptable_params = $args{acceptable_params};
+	my $type = $args{type};
+	
+	if($args{params} && ref($args{params}) eq 'HASH')
+    {
+        for my $param(keys %{$args{params}})
+        {
+            # Perform or skip parameter checking
+            if($args{nocheck} && $args{nocheck} == 1)
+            {
+                $params->{$param} = $args{params}->{$param};
+            }
+            else
+            {
+                $params->{$param} = $args{params}->{$param} if $self->_assert_param($param, $acceptable_params->{$type});
+            }
+        }
+    }
+    return $params;
+}
 
 1; # End of Net::FileMaker::XML;

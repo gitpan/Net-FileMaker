@@ -1,5 +1,3 @@
-#!perl -T
-
 use strict;
 use warnings;
 
@@ -19,4 +17,3 @@ BEGIN
     use_ok('Net::FileMaker::XML::Database');
 }
 
-diag( "Testing Net::FileMaker::XML $Net::FileMaker::XML::VERSION, Perl $], $^X" );

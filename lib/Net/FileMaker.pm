@@ -2,11 +2,13 @@ package Net::FileMaker;
 
 use strict;
 use warnings;
-
+use Carp;
 use 5.008;
 
 use LWP::UserAgent;
 use URI;
+
+=encoding utf8
 
 =head1 NAME
 
@@ -14,11 +16,11 @@ Net::FileMaker - Interact with FileMaker services
 
 =head1 VERSION
 
-Version 0.062
+Version 0.063
 
 =cut
 
-our $VERSION = 0.062;
+our $VERSION = 0.063;
 
 =head1 SYNOPSIS
 
@@ -56,7 +58,7 @@ sub new
 	# TODO: Add XSLT, PHP, etc.
 	else
 	{
-		die('Unknown type specified.');
+		croak 'Unknown type specified.';
 	}
 
 }
@@ -71,6 +73,7 @@ Squeeks, C<< <squeek at cpan.org> >>
 
 =head1 CONTRIBUTORS
 
+Michele Ongaro, <<ongaro.michele at gmail.com>>
 Simon Cozens, C<<simon at cpan.org>>
 Marcel Grünauer, C<<marcel at cpan.org>>
 
